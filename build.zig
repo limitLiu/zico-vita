@@ -227,6 +227,7 @@ fn addNesObject(
         .target = target,
         .optimize = optimize,
         .sanitize_c = .off,
+        .stack_check = false,
     });
     if (vita_sdk) |sdk| {
         mod.addSystemIncludePath(.{ .cwd_relative = sdk.sdk_include_dir });
