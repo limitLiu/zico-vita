@@ -5,7 +5,7 @@ The project is split into a C++ application host and a Zig NES core.
 ## Layers
 
 ```text
-app/vita/main.cpp
+gui/vita/main.cc
   PS Vita application entry point.
   This is where Borealis should be initialized.
 
@@ -33,7 +33,7 @@ returning video/audio output.
 Recommended next step:
 
 ```text
-app/vita/main.cpp
+gui/vita/main.cc
   initialize brls::Application
   mount/copy Borealis resources
   install a custom NES view

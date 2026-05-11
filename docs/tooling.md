@@ -12,7 +12,7 @@ core code from macOS:
 zig build run
 ```
 
-This does not build or package a VPK. It compiles `app/desktop/main.cpp` and
+This does not build or package a VPK. It compiles `gui/desktop/main.cc` and
 links it with the Zig NES module and the macOS OpenGL Borealis build.
 
 To compile the desktop GUI without launching the window:
@@ -30,8 +30,8 @@ zig build vita
 Generate a local compilation database before opening the project in clangd or
 CLion:
 
-Use `zig build compdb-desktop` for `app/desktop/main.cpp`, or
-`zig build compdb-vita` for `app/vita/main.cpp`. The shorthand
+Use `zig build compdb-desktop` for `gui/desktop/main.cc`, or
+`zig build compdb-vita` for `gui/vita/main.cc`. The shorthand
 `zig build compdb` currently means desktop.
 
 This writes `compile_commands.json` at the repository root. The file is ignored
@@ -45,11 +45,11 @@ clangd should pick it up automatically.
 To verify the desktop database manually:
 
 ```sh
-clangd --check=app/desktop/main.cpp
+clangd --check=gui/desktop/main.cc
 ```
 
 For Vita, generate `zig build compdb-vita` with `VITASDK` set, then check
-`app/vita/main.cpp`.
+`gui/vita/main.cc`.
 
 ## CLion
 

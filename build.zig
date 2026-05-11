@@ -14,6 +14,25 @@ const VitaArtifacts = struct {
     vpk: std.Build.LazyPath,
 };
 
+const CppSource = struct {
+    path: []const u8,
+    object_stem: []const u8,
+};
+
+const gui_cpp_sources = [_]CppSource{
+    .{ .path = "gui/main.cc", .object_stem = "main" },
+    .{ .path = "gui/app.cc", .object_stem = "app" },
+    .{ .path = "gui/config.cc", .object_stem = "config" },
+};
+
+const macos_min_version = std.SemanticVersion{
+    .major = 26,
+    .minor = 0,
+    .patch = 0,
+};
+const macos_min_version_arg = "-mmacosx-version-min=26.0";
+const deprecated_literal_operator_warning_arg = "-Wno-deprecated-literal-operator";
+
 pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const borealis = BorealisPaths{
@@ -32,24 +51,19 @@ pub fn build(b: *std.Build) void {
 }
 
 fn addDesktopRunStep(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: BorealisPaths) void {
-    const target = b.resolveTargetQuery(.{});
+    const target = b.resolveTargetQuery(.{
+        .os_tag = .macos,
+        .os_version_min = .{ .semver = macos_min_version },
+    });
     const nes_obj = addNesObject(b, "zico_nes_desktop", target, optimize, null);
 
-    const host_cpp = b.addSystemCommand(&.{"c++"});
-    host_cpp.addArg("-std=c++17");
-    host_cpp.addArg("-DZICO_DESKTOP");
-    host_cpp.addArg("-D__GLFW__");
-    host_cpp.addArg("-DBOREALIS_USE_OPENGL");
-    host_cpp.addArg(b.fmt("-DBRLS_RESOURCES=\"{s}/resources/\"", .{borealis.source_dir}));
-    addProjectIncludeArgs(b, host_cpp);
-    addBorealisDesktopIncludeArgs(b, host_cpp, borealis);
-    host_cpp.addArg("-c");
-    host_cpp.addFileArg(b.path("app/desktop/main.cpp"));
-    const host_obj = host_cpp.addPrefixedOutputFileArg("-o", "desktop_host.o");
-
     const link = b.addSystemCommand(&.{"c++"});
+    link.addArg(macos_min_version_arg);
     link.addArtifactArg(nes_obj);
-    link.addFileArg(host_obj);
+    for (gui_cpp_sources) |source| {
+        const object = addDesktopCppObject(b, borealis, source.path, b.fmt("desktop_{s}.o", .{source.object_stem}));
+        link.addFileArg(object);
+    }
     addBorealisCommonArchives(b, link, borealis.desktop_build_dir);
     link.addFileArg(.{ .cwd_relative = b.pathJoin(&.{ borealis.desktop_build_dir, "library/lib/extern/glfw/src/libglfw3.a" }) });
     addMacFramework(link, "OpenGL");
@@ -80,6 +94,46 @@ fn addDesktopRunStep(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis
     run_step.dependOn(&run.step);
 }
 
+fn addDesktopCppObject(b: *std.Build, borealis: BorealisPaths, source_path: []const u8, object_name: []const u8) std.Build.LazyPath {
+    const cmd = b.addSystemCommand(&.{"c++"});
+    cmd.addArg("-std=c++20");
+    cmd.addArg(macos_min_version_arg);
+    cmd.addArg(deprecated_literal_operator_warning_arg);
+    cmd.addArg("-D__darwin__");
+    cmd.addArg("-D__GLFW__");
+    cmd.addArg("-DBOREALIS_USE_OPENGL");
+    cmd.addArg(b.fmt("-DBRLS_RESOURCES=\"{s}/resources/\"", .{borealis.source_dir}));
+    addProjectIncludeArgs(b, cmd);
+    addBorealisDesktopIncludeArgs(b, cmd, borealis);
+    cmd.addArg("-c");
+    cmd.addFileArg(b.path(source_path));
+    return cmd.addPrefixedOutputFileArg("-o", object_name);
+}
+
+fn addVitaCppObject(
+    b: *std.Build,
+    borealis: BorealisPaths,
+    vitasdk: []const u8,
+    source_path: []const u8,
+    object_name: []const u8,
+    sdk_include_dir: []const u8,
+    sdk_common_dir: []const u8,
+    sdk_cxx_include_dir: []const u8,
+    sdk_cxx_target_include_dir: []const u8,
+) std.Build.LazyPath {
+    const cmd = b.addSystemCommand(&.{toolPath(b, vitasdk, "bin/arm-vita-eabi-g++")});
+    cmd.addArg("-std=c++20");
+    cmd.addArg("-D__vita__");
+    cmd.addArg("-DBOREALIS_USE_GXM");
+    cmd.addArg("-DBRLS_RESOURCES=\"app0:resources/\"");
+    addProjectIncludeArgs(b, cmd);
+    addVitaSdkIncludeArgs(cmd, sdk_include_dir, sdk_common_dir, sdk_cxx_include_dir, sdk_cxx_target_include_dir);
+    addBorealisVitaIncludeArgs(b, cmd, borealis);
+    cmd.addArg("-c");
+    cmd.addFileArg(b.path(source_path));
+    return cmd.addPrefixedOutputFileArg("-o", object_name);
+}
+
 fn addVitaStep(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: BorealisPaths) void {
     const artifacts = addVitaBuild(b, optimize, borealis);
     const install_step = addVitaInstallStep(b, artifacts);
@@ -106,8 +160,8 @@ fn addVitaBuild(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: Bor
     const sdk_common_dir = toolPath(b, vitasdk, "share/gcc-arm-vita-eabi/samples/common");
     const sdk_debugscreen_c = toolPath(b, vitasdk, "share/gcc-arm-vita-eabi/samples/common/debugScreen.c");
     const sdk_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include");
-    const sdk_cxx_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/10.3.0");
-    const sdk_cxx_target_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/10.3.0/arm-vita-eabi");
+    const sdk_cxx_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/15.2.0");
+    const sdk_cxx_target_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/15.2.0/arm-vita-eabi");
 
     const vita_target = b.resolveTargetQuery(.{
         .cpu_arch = .arm,
@@ -120,25 +174,17 @@ fn addVitaBuild(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: Bor
         .debugscreen_c = sdk_debugscreen_c,
     });
 
-    const host_cpp = b.addSystemCommand(&.{toolPath(b, vitasdk, "bin/arm-vita-eabi-g++")});
-    host_cpp.addArg("-std=c++17");
-    host_cpp.addArg("-D__vita__");
-    host_cpp.addArg("-D__PSV__");
-    host_cpp.addArg("-DBOREALIS_USE_GXM");
-    host_cpp.addArg("-DBRLS_RESOURCES=\"app0:resources/\"");
-    addProjectIncludeArgs(b, host_cpp);
-    addVitaSdkIncludeArgs(host_cpp, sdk_include_dir, sdk_common_dir, sdk_cxx_include_dir, sdk_cxx_target_include_dir);
-    addBorealisVitaIncludeArgs(b, host_cpp, borealis);
-    host_cpp.addArg("-c");
-    host_cpp.addFileArg(b.path("app/vita/main.cpp"));
-    const host_obj = host_cpp.addPrefixedOutputFileArg("-o", "vita_host.o");
-
     const link_elf = b.addSystemCommand(&.{toolPath(b, vitasdk, "bin/arm-vita-eabi-g++")});
     link_elf.addArtifactArg(nes_obj);
-    link_elf.addFileArg(host_obj);
+    for (gui_cpp_sources) |source| {
+        const object_name = b.fmt("vita_{s}.o", .{source.object_stem});
+        const object = addVitaCppObject(b, borealis, vitasdk, source.path, object_name, sdk_include_dir, sdk_common_dir, sdk_cxx_include_dir, sdk_cxx_target_include_dir);
+        link_elf.addFileArg(object);
+    }
     link_elf.addArg("-Wl,-q");
     link_elf.addArg("-Wl,-z,nocopyreloc");
     link_elf.addArg("-Wl,--gc-sections");
+    link_elf.addArg("-Wl,--no-warn-execstack");
     addBorealisCommonArchives(b, link_elf, borealis.vita_build_dir);
     addBorealisVitaLinkArgs(link_elf);
     link_elf.addArg("-lSceLibKernel_stub");
@@ -246,15 +292,12 @@ fn addNesObject(
 
 fn addCompileCommandsSteps(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: BorealisPaths) void {
     const desktop = addCompileCommandsRun(b, optimize, "desktop", borealis);
-    const desktop_step = b.step("compdb-desktop", "Generate compile_commands.json for macOS Borealis OpenGL");
-    desktop_step.dependOn(desktop);
+    const default_step = b.step("compdb", "Generate compile_commands.json for macOS Borealis OpenGL");
+    default_step.dependOn(desktop);
 
     const vita = addCompileCommandsRun(b, optimize, "vita", borealis);
     const vita_step = b.step("compdb-vita", "Generate compile_commands.json for PS Vita Borealis GXM");
     vita_step.dependOn(vita);
-
-    const default_step = b.step("compdb", "Generate compile_commands.json for macOS Borealis OpenGL");
-    default_step.dependOn(desktop);
 }
 
 fn addCompileCommandsRun(b: *std.Build, optimize: std.builtin.OptimizeMode, mode: []const u8, borealis: BorealisPaths) *std.Build.Step {
