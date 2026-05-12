@@ -5,9 +5,13 @@ The project is split into a C++ application host and a Zig NES core.
 ## Layers
 
 ```text
-gui/vita/main.cc
-  PS Vita application entry point.
-  This is where Borealis should be initialized.
+gui/main.cc, gui/app.cc
+  Shared Borealis C++ application entry point and app shell.
+  The same sources are compiled for macOS and PS Vita with target-specific
+  compiler flags from build.zig.
+
+gui/config.cc
+  Platform-specific configuration paths behind the shared C++ host layer.
 
 include/zico_nes.h
   Stable C ABI between the C++ host and Zig core.
@@ -15,10 +19,6 @@ include/zico_nes.h
 src/nes/api.zig
   Zig implementation behind the C ABI.
   Replace the placeholder implementation with the real NES core.
-
-src/host/main.zig
-  Native development host for `zig build run`.
-  This runs on the current machine and should stay independent from Vita SDK.
 ```
 
 ## Borealis Integration
@@ -33,7 +33,7 @@ returning video/audio output.
 Recommended next step:
 
 ```text
-gui/vita/main.cc
+gui/app.cc
   initialize brls::Application
   mount/copy Borealis resources
   install a custom NES view

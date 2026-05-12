@@ -160,8 +160,8 @@ fn addVitaBuild(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: Bor
     const sdk_common_dir = toolPath(b, vitasdk, "share/gcc-arm-vita-eabi/samples/common");
     const sdk_debugscreen_c = toolPath(b, vitasdk, "share/gcc-arm-vita-eabi/samples/common/debugScreen.c");
     const sdk_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include");
-    const sdk_cxx_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/15.2.0");
-    const sdk_cxx_target_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/15.2.0/arm-vita-eabi");
+    const sdk_cxx_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/version");
+    const sdk_cxx_target_include_dir = toolPath(b, vitasdk, "arm-vita-eabi/include/c++/version/arm-vita-eabi");
 
     const vita_target = b.resolveTargetQuery(.{
         .cpu_arch = .arm,

@@ -1,7 +1,12 @@
 # C++ Tooling
 
-The Vita C++ host is compiled from `build.zig` with `arm-vita-eabi-g++`, so
-editors do not automatically know the include paths or target flags.
+The shared Borealis C++ host is compiled from `build.zig` with different
+toolchains:
+
+- macOS uses `c++` with the OpenGL/GLFW Borealis build.
+- PS Vita uses `arm-vita-eabi-g++` with the GXM Borealis build.
+
+Editors do not automatically know those include paths or target flags.
 
 ## Native Run
 
@@ -12,8 +17,8 @@ core code from macOS:
 zig build run
 ```
 
-This does not build or package a VPK. It compiles `gui/desktop/main.cc` and
-links it with the Zig NES module and the macOS OpenGL Borealis build.
+This does not build or package a VPK. It compiles the shared `gui/*.cc` sources
+and links them with the Zig NES module and the macOS OpenGL Borealis build.
 
 To compile the desktop GUI without launching the window:
 
@@ -30,9 +35,8 @@ zig build vita
 Generate a local compilation database before opening the project in clangd or
 CLion:
 
-Use `zig build compdb-desktop` for `gui/desktop/main.cc`, or
-`zig build compdb-vita` for `gui/vita/main.cc`. The shorthand
-`zig build compdb` currently means desktop.
+Use `zig build compdb` for the default macOS database, or
+`zig build compdb-vita` for the Vita database.
 
 This writes `compile_commands.json` at the repository root. The file is ignored
 by git because it contains machine-local absolute paths.
@@ -45,11 +49,11 @@ clangd should pick it up automatically.
 To verify the desktop database manually:
 
 ```sh
-clangd --check=gui/desktop/main.cc
+clangd --check=gui/main.cc
 ```
 
 For Vita, generate `zig build compdb-vita` with `VITASDK` set, then check
-`gui/vita/main.cc`.
+`gui/main.cc`.
 
 ## CLion
 

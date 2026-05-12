@@ -4,6 +4,27 @@ The project uses Borealis as the C++ GUI host. Zig stays behind the C ABI in
 `include/zico_nes.h`, so the NES core can be linked by both the macOS desktop
 host and the PS Vita host.
 
+## Requirements
+
+- Zig 0.16
+- A macOS Borealis OpenGL build at `vendor/borealis/build-macos-opengl`
+- A PS Vita Borealis GXM build at `vendor/borealis/build-psv-gxm`
+- VitaSDK available through `VITASDK` when building Vita artifacts
+
+The Vita C++ build expects the active GCC C++ include directory to be available
+through a stable `version` symlink:
+
+```sh
+ln -s 15.2.0 "$VITASDK/arm-vita-eabi/include/c++/version"
+```
+
+The target-specific include directory should resolve through that symlink as
+well:
+
+```sh
+test -d "$VITASDK/arm-vita-eabi/include/c++/version/arm-vita-eabi"
+```
+
 ## Build macOS OpenGL Borealis
 
 Use this for local GUI/core iteration:
@@ -64,16 +85,5 @@ zig build vita \
 
 ## Tooling
 
-Generate clangd/CLion flags for the desktop host:
-
-```sh
-zig build compdb-desktop
-```
-
-Generate flags for the Vita host:
-
-```sh
-zig build compdb-vita
-```
-
-Then open the repository root in the editor.
+See [C++ Tooling](tooling.md) for `compile_commands.json`, clangd, and CLion
+setup.
