@@ -184,7 +184,7 @@ fn addVitaBuild(b: *std.Build, optimize: std.builtin.OptimizeMode, borealis: Bor
     link_elf.addArg("-Wl,-q");
     link_elf.addArg("-Wl,-z,nocopyreloc");
     link_elf.addArg("-Wl,--gc-sections");
-    link_elf.addArg("-Wl,--no-warn-execstack");
+    link_elf.addArg("-Wl,-z,noexecstack");
     addBorealisCommonArchives(b, link_elf, borealis.vita_build_dir);
     addBorealisVitaLinkArgs(link_elf);
     link_elf.addArg("-lSceLibKernel_stub");
